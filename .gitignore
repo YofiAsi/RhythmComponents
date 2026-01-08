@@ -1,6 +1,4 @@
-*.import
-*.uid
-
-*
-!.gitignore
-!addons/rhythm_components/
+.vscode/
+.godot/
+addons/gut/
+addons/rhythm_components/examples/

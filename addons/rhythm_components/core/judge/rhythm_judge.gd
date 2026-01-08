@@ -1,42 +1,3 @@
-#class_name RhythmJudge
-#extends RhythmComponent
-#
-#signal note_succeed(note_key: StringName, error_beats: float)
-#signal note_missed(note_key: StringName, error_beats: float)
-#signal note_blank_hit(note_key: StringName)
-#
-#var _note_keys_pending: Dictionary[StringName, int] = {}
-#
-#func _ready() -> void:
-	#super._ready()
-#
-#func set_note_keys(note_keys_list: Array[StringName]) -> void:
-	#_note_keys_pending = {}
-	#for note_key in note_keys_list:
-		#_note_keys_pending.set(note_key, 0)
-#
-#func on_hit_window_closed(note_key: StringName) -> void:
-	#var pending := _note_keys_pending.get(note_key, 0)
-	#if pending > 0:
-		#note_missed.emit(note_key)
-		#_note_keys_pending.set(note_key, pending - 1)
-#
-#func on_hit_window_opened(note_key: StringName) -> void:
-	#var pending := _note_keys_pending.get(note_key, 0)
-	#_note_keys_pending.set(note_key, pending + 1)
-#
-#func on_input_event(note_key: StringName, event: InputEvent, check_pressed: bool = true) -> void:
-	#if event.is_pressed() or not check_pressed:
-		#if event.is_echo():
-			#print("echo")
-		#else:
-			#var pending := _note_keys_pending.get(note_key, 0)
-			#if pending > 0:
-				#note_succeed.emit(note_key)
-				#_note_keys_pending.set(note_key, pending - 1)
-			#else:
-				#note_blank_hit.emit(note_key)
-
 class_name RhythmJudge
 extends RhythmComponent
 
@@ -45,13 +6,13 @@ signal note_missed(note_key: StringName)
 signal note_blank_hit(note_key: StringName)
 
 class NoteState:
-	var note: Note
+	var note: ChartPartNote
 	var note_key: StringName
 	var resolved: bool = false
 	var dispatched: bool = false # whether a succeed was already emitted (either by judge or orchestrator)
 	var error_beats: float = 0.0
 
-	func _init(n: Note) -> void:
+	func _init(n: ChartPartNote) -> void:
 		note = n
 		note_key = n.type.action_name
 
@@ -69,7 +30,7 @@ func set_note_keys(note_keys_list: Array[StringName]) -> void:
 
 # --- Window lifecycle (note-instance based) ---
 
-func on_hit_window_opened(note: Note) -> void:
+func on_hit_window_opened(note: ChartPartNote) -> void:
 	if note == null or note.type == null:
 		return
 
@@ -82,7 +43,7 @@ func on_hit_window_opened(note: Note) -> void:
 		_pending_by_key[st.note_key] = []
 	_pending_by_key[st.note_key].append(st)
 
-func on_hit_window_closed(note: Note, close_beat: float) -> void:
+func on_hit_window_closed(note: ChartPartNote, close_beat: float) -> void:
 	if note == null:
 		return
 
@@ -135,10 +96,10 @@ func on_input_event(
 
 	# Resolve and record error.
 	st.resolved = true
-	st.error_beats = input_beat - st.note.hit_time
+	st.error_beats = input_beat - st.note.start_time
 
 	# Late (or exactly on time) hit: succeed immediately.
-	if input_beat >= st.note.hit_time and not st.dispatched:
+	if input_beat >= st.note.start_time and not st.dispatched:
 		note_succeed.emit(note_key, st.error_beats)
 		st.dispatched = true
 
@@ -155,7 +116,7 @@ func _pick_best_pending(note_key: StringName, input_beat: float) -> NoteState:
 		if st.resolved:
 			continue
 
-		var d := absf(input_beat - st.note.hit_time)
+		var d := absf(input_beat - st.note.start_time)
 		if d < best_abs:
 			best_abs = d
 			best = st
@@ -169,7 +130,7 @@ func _pick_best_pending(note_key: StringName, input_beat: float) -> NoteState:
 #   "emit": bool,            # should orchestrator emit succeed now
 #   "error_beats": float     # stored error (only meaningful if emit=true)
 # }
-func on_note_hit_time(note: Note) -> Dictionary:
+func on_note_hit_time(note: ChartPartNote) -> Dictionary:
 	var out := {"emit": false, "error_beats": 0.0}
 
 	if note == null:

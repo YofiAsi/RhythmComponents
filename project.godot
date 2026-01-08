@@ -19,7 +19,7 @@ window/stretch/mode="canvas_items"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/rhythm_components/plugin.cfg")
+enabled=PackedStringArray("res://addons/gut/plugin.cfg", "res://addons/rhythm_components/plugin.cfg")
 
 [global_group]
 

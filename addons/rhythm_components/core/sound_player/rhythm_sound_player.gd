@@ -12,6 +12,11 @@ var latency_offset: float = 0.0
 var _cached_output_latency: float = 0.0
 var _last_latency_update_ms: int = 0
 const LATENCY_REFRESH_MS := 1000
+const MS_TO_SECONDS := 1000.0
+
+# --- Simulation state ---
+var _simulating: bool = false
+var _simulation_start_time: float = 0.0
 
 func _ready() -> void:
 	main_song_player = AudioStreamPlayer.new()
@@ -30,11 +35,25 @@ func add_sfx(stream: AudioStream, action_name: String) -> void:
 
 func set_song(stream: AudioStream) -> void:
 	main_song_player.stream = stream
+	if stream != null and _simulating:
+		_simulating = false
 
 func play_main_song() -> void:
+	if main_song_player.stream == null:
+		push_warning("RhythmSoundPlayer: No song stream set. Simulating playback based on BPM.")
+		_simulating = true
+		_simulation_start_time = Time.get_ticks_msec() / MS_TO_SECONDS
+		song_position = 0.0
+		return
+	
+	_simulating = false
 	main_song_player.play()
 
 func update() -> void:
+	if _simulating:
+		_update_simulation()
+		return
+	
 	if not main_song_player.playing:
 		return
 
@@ -47,11 +66,25 @@ func update() -> void:
 
 	song_position_updated.emit(song_position)
 
+func _update_simulation() -> void:
+	if not orchestrator:
+		return
+	
+	var current_time := Time.get_ticks_msec() / MS_TO_SECONDS
+	var elapsed_time := current_time - _simulation_start_time
+	
+	song_position = elapsed_time
+	song_position += latency_offset
+	
+	song_position_updated.emit(song_position)
+
 func set_manual_latency_offset(val: float) -> void:
 	latency_offset = val
 
 func stop() -> void:
+	_simulating = false
 	main_song_player.stop()
+	song_position = 0.0
 
 func on_sfx_play(action_name: StringName) -> void:
 	var sfx_player: AudioStreamPlayer = sfx_players.get(str(action_name))

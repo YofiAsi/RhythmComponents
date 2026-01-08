@@ -11,24 +11,27 @@ var beat_duration : float = 0.0
 var current_beat : float = 0.0
 var current_measure: int = 0
 
+const SECONDS_PER_MINUTE := 60.0
+const INVALID_SONG_POSITION := -1.0
+
 func _ready() -> void:
 	super._ready()
 
 func set_song(
 	song_bpm: float,
-	song_beat_per_mesure: int,
-	song_beat_unit: int,
+	song_beat_per_measure: float,
+	song_beat_unit: float,
 ) -> void:
 	self.bpm = song_bpm
-	self.beats_per_measure = song_beat_per_mesure
+	self.beats_per_measure = song_beat_per_measure
 	self.beat_unit = song_beat_unit
-	self.beat_duration = 60.0 / bpm
+	self.beat_duration = SECONDS_PER_MINUTE / bpm
 	self.current_beat = 0.0
 	self.current_measure = 0
 
-func update(song_pos: float = -1) -> void:
+func update(song_pos: float = INVALID_SONG_POSITION) -> void:
 	var t := song_pos
-	if t <= -1:
+	if t <= INVALID_SONG_POSITION:
 		push_error("song time not provided")
 		return
 	
@@ -38,14 +41,14 @@ func update(song_pos: float = -1) -> void:
 	current_beat = beat
 	beat_update.emit(current_beat)
 	
-	var mesure: int = _get_mesure(current_beat)
-	if current_measure == mesure:
+	var measure: int = _get_measure(current_beat)
+	if current_measure == measure:
 		return
-	current_measure = mesure
+	current_measure = measure
 	measure_update.emit(current_measure)
 
 func _get_beat(time: float) -> float:
 	return time / beat_duration
 
-func _get_mesure(beat: float) -> int:
+func _get_measure(beat: float) -> int:
 	return int(floor(beat / beats_per_measure))

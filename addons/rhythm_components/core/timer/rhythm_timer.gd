@@ -8,20 +8,22 @@ signal timeout
 @export var autostart: bool = false
 
 var paused: bool = false
-var time_left: float = -100.0
+var time_left: float = STOPPED_STATE
 var _start_beat: float = 0.0
+
+const STOPPED_STATE := -100.0
 
 func _ready() -> void:
 	super._ready()
 	if autostart:
 		start(wait_beats)
 	else:
-		time_left = -100.0
+		time_left = STOPPED_STATE
 
 func is_stopped() -> bool:
 	if paused:
 		return true
-	if time_left == -100.0:
+	if time_left == STOPPED_STATE:
 		return true
 	return false
 
@@ -33,7 +35,7 @@ func start(beats: float = wait_beats) -> void:
 	time_left = wait_beats - (cb - rb)
 
 func stop() -> void:
-	time_left = -100.0
+	time_left = STOPPED_STATE
 
 func set_paused(v: bool) -> void:
 	paused = v
@@ -52,7 +54,7 @@ func _process(delta: float) -> void:
 	if time_left <= 0.0:
 		timeout.emit()
 		if one_shot:
-			time_left = -100.0
+			time_left = STOPPED_STATE
 		else:
 			_start_beat += wait_beats
 			time_left = (_start_beat + wait_beats) - cb
